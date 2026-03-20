@@ -2,15 +2,15 @@ import socket
 import threading
 import time
 
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"
 PORT = 5000
-AUCTION_DURATION = 30
+AUCTION_DURATION = 45
 
 clients = []
 highest_bid = 0
 highest_bidder = None
 auction_active = True
-auction_end_time = time.time() + AUCTION_DURATION
+auction_end_time = None
 item_name = ""
 base_price = 0
 lock = threading.Lock()
@@ -30,9 +30,16 @@ def broadcast(message):
             clients.remove(client)
 
 
+def get_server_ip():
+    try:
+        hostname = socket.gethostname()
+        return socket.gethostbyname(hostname)
+    except OSError:
+        return "Unable to detect automatically"
+
+
 def close_auction():
     global auction_active
-
     while True:
         with lock:
             if not auction_active:
@@ -130,7 +137,7 @@ def handle_client(conn, addr):
 
 
 def start_server():
-    global item_name, base_price
+    global item_name, base_price, auction_end_time
 
     item_name = input("Enter the item being auctioned: ").strip() or "Unnamed item"
 
@@ -150,9 +157,12 @@ def start_server():
     server.settimeout(0.5)
 
     print(f"[SERVER STARTED] on {HOST}:{PORT}")
+    print(f"[CONNECT FROM OTHER PCS] Use IP: {get_server_ip()} and port {PORT}")
     print(f"[ITEM] {item_name}")
     print(f"[BASE PRICE] Rs.{base_price}")
     print(f"[AUCTION] Ends automatically in {AUCTION_DURATION} seconds")
+
+    auction_end_time = time.time() + AUCTION_DURATION
 
     timer_thread = threading.Thread(target=close_auction, daemon=True)
     timer_thread.start()

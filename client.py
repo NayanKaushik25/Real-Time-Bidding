@@ -1,6 +1,7 @@
 import socket
 import threading
 import sys
+import ssl
 
 DEFAULT_HOST = "127.0.0.1"
 PORT = 5000
@@ -30,9 +31,15 @@ def receive_messages(sock, stop_event):
 def start_client():
     server_host = input(f"Enter server IP [{DEFAULT_HOST}]: ").strip() or DEFAULT_HOST
 
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    context = ssl.create_default_context()
+    
+    # For local testing (self-signed cert)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    raw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client = context.wrap_socket(raw_socket, server_hostname=server_host)
     client.connect((server_host, PORT))
-
+    
     stop_event = threading.Event()
     name = input("Enter your name: ").strip()
 

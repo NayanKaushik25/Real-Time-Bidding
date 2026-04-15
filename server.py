@@ -6,11 +6,12 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
+import ssl
 
 HOST = "0.0.0.0"
 TCP_PORT = 5000
 HTTP_PORT = 8000
-AUCTION_DURATION = 45
+AUCTION_DURATION = 150
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 
 clients = []
@@ -251,12 +252,14 @@ def start_http_server():
 
 
 def start_tcp_server():
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, TCP_PORT))
     server.listen()
     server.settimeout(0.5)
 
-    print(f"[TCP SERVER STARTED] on {HOST}:{TCP_PORT}")
+    print(f"[TCP SERVER STARTED WITH SSL] on {HOST}:{TCP_PORT}")
     print(f"[CONNECT FROM OTHER PCS] Use IP: {get_server_ip()} and port {TCP_PORT}")
     print(f"[ITEM] {item_name}")
     print(f"[BASE PRICE] Rs.{base_price}")
@@ -268,7 +271,12 @@ def start_tcp_server():
                 break
 
         try:
-            conn, addr = server.accept()
+            raw_conn, addr = server.accept()
+            try:
+                conn = context.wrap_socket(raw_conn, server_side=True)
+            except ssl.SSLError:
+                raw_conn.close()
+                continue
         except socket.timeout:
             continue
 
